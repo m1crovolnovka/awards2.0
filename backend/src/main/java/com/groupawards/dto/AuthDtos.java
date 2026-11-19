@@ -19,10 +19,10 @@ public final class AuthDtos {
     ) {
     }
 
-    /** Login without Telegram bot: user enters @username + display name. */
+    /** Login without Telegram bot: user enters @username (+ optional display name). */
     public record TelegramLiteRequest(
             @NotBlank @Size(min = 2, max = 64) String username,
-            @NotBlank @Size(min = 1, max = 100) String displayName
+            @Size(max = 100) String displayName
     ) {
     }
 

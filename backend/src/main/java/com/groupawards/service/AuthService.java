@@ -68,8 +68,11 @@ public class AuthService {
                         .mustChangePassword(false)
                         .build());
 
+        String display = request.displayName() != null && !request.displayName().isBlank()
+                ? request.displayName().trim()
+                : username;
         user.setUsername(username);
-        user.setFirstName(request.displayName().trim());
+        user.setFirstName(display);
         user.setLastName(null);
         user = userRepository.save(user);
 

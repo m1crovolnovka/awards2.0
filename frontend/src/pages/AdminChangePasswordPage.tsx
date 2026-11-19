@@ -12,8 +12,6 @@ export function AdminChangePasswordPage() {
   const [loading, setLoading] = useState(false);
 
   if (!user || user.role !== 'ADMIN') return <Navigate to="/admin/login" replace />;
-  if (!user.mustChangePassword) return <Navigate to="/admin" replace />;
-
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);

@@ -4,10 +4,10 @@ import { AuthImage } from '../components/AuthImage';
 import { useAuth } from '../hooks/AuthContext';
 import type { NominationCard, NominationStats, NomineeAdminView, VotingStatus } from '../types';
 
-type Tab = 'stats' | 'nominations' | 'nominees' | 'reports';
+type Tab = 'stats' | 'nominations' | 'nominees' | 'reports' | 'account';
 
 export function AdminDashboard() {
-  const { logout } = useAuth();
+  const { logout, loginWithToken, user } = useAuth();
   const [tab, setTab] = useState<Tab>('stats');
   const [status, setStatus] = useState<VotingStatus | null>(null);
   const [stats, setStats] = useState<NominationStats[]>([]);
@@ -25,6 +25,13 @@ export function AdminDashboard() {
     image: null as File | null,
     nomineeIds: [] as number[],
   });
+  const [credForm, setCredForm] = useState({
+    currentPassword: '',
+    newLogin: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [credSaving, setCredSaving] = useState(false);
 
   const refresh = useCallback(async () => {
     setError('');
@@ -138,6 +145,7 @@ export function AdminDashboard() {
                 ['nominations', 'Номинации'],
                 ['nominees', 'Номинанты'],
                 ['reports', 'Отчёты'],
+                ['account', 'Логин / пароль'],
               ] as const
             ).map(([key, label]) => (
               <button
@@ -440,6 +448,92 @@ export function AdminDashboard() {
                   </button>
                 </div>
               </div>
+            )}
+
+            {tab === 'account' && (
+              <form
+                className="panel"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (credForm.newPassword !== credForm.confirmPassword) {
+                    setError('Новый пароль и подтверждение не совпадают');
+                    return;
+                  }
+                  setCredSaving(true);
+                  setError('');
+                  void api
+                    .changeAdminCredentials(
+                      credForm.currentPassword,
+                      credForm.newLogin || user?.username || '',
+                      credForm.newPassword,
+                    )
+                    .then((res) => {
+                      loginWithToken(res);
+                      setCredForm({
+                        currentPassword: '',
+                        newLogin: '',
+                        newPassword: '',
+                        confirmPassword: '',
+                      });
+                      flash('Логин и пароль обновлены');
+                    })
+                    .catch((err) => setError(err instanceof Error ? err.message : 'Ошибка'))
+                    .finally(() => setCredSaving(false));
+                }}
+              >
+                <h2 style={{ fontFamily: 'var(--font-display)', textTransform: 'uppercase', marginTop: 0 }}>
+                  Смена логина и пароля
+                </h2>
+                <p className="lead" style={{ marginTop: 0 }}>
+                  Текущий логин: <strong>{user?.username}</strong>
+                </p>
+                <div className="field">
+                  <label>Текущий пароль</label>
+                  <input
+                    type="password"
+                    value={credForm.currentPassword}
+                    onChange={(e) => setCredForm({ ...credForm, currentPassword: e.target.value })}
+                    required
+                    autoComplete="current-password"
+                  />
+                </div>
+                <div className="field">
+                  <label>Новый логин</label>
+                  <input
+                    value={credForm.newLogin}
+                    onChange={(e) => setCredForm({ ...credForm, newLogin: e.target.value })}
+                    placeholder={user?.username || 'новый логин'}
+                    minLength={3}
+                    required
+                    autoComplete="username"
+                  />
+                </div>
+                <div className="field">
+                  <label>Новый пароль</label>
+                  <input
+                    type="password"
+                    value={credForm.newPassword}
+                    onChange={(e) => setCredForm({ ...credForm, newPassword: e.target.value })}
+                    minLength={6}
+                    required
+                    autoComplete="new-password"
+                  />
+                </div>
+                <div className="field">
+                  <label>Повторите новый пароль</label>
+                  <input
+                    type="password"
+                    value={credForm.confirmPassword}
+                    onChange={(e) => setCredForm({ ...credForm, confirmPassword: e.target.value })}
+                    minLength={6}
+                    required
+                    autoComplete="new-password"
+                  />
+                </div>
+                <button className="btn btn-primary" type="submit" disabled={credSaving}>
+                  {credSaving ? 'Сохранение…' : 'Сохранить'}
+                </button>
+              </form>
             )}
           </section>
         </div>

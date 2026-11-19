@@ -28,7 +28,7 @@ app:
     bot-token: ${TELEGRAM_BOT_TOKEN:REPLACE_ME}
     bot-username: ${TELEGRAM_BOT_USERNAME:REPLACE_ME}
     auth-max-age-seconds: 86400
-    lite-auth: ${TELEGRAM_LITE_AUTH:false}
+    lite-auth: ${TELEGRAM_LITE_AUTH:true}
   admin:
     default-username: admin
     default-password: admin
