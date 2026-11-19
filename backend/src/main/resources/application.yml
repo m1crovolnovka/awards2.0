@@ -1,0 +1,35 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/group_awards
+    username: awards
+    password: awards_secret
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          lob:
+            non_contextual_creation: true
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 12MB
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:ChangeThisSecretKeyToSomethingLongAndSecureAtLeast32Chars!}
+    expiration-ms: 86400000
+  telegram:
+    bot-token: ${TELEGRAM_BOT_TOKEN:REPLACE_ME}
+    bot-username: ${TELEGRAM_BOT_USERNAME:REPLACE_ME}
+    auth-max-age-seconds: 86400
+  admin:
+    default-username: admin
+    default-password: admin
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
