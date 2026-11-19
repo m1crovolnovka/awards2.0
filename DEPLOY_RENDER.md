@@ -102,17 +102,22 @@ VITE_API_URL=https://YOUR-SERVICE.onrender.com
 
 ---
 
-## Вход без бота
+## Вход через Telegram (официальный виджет)
 
-Официальный Telegram Login Widget **требует бота**.  
-В приложении по умолчанию включён **lite-режим**: кнопка «Войти через Telegram» → username + имя, без BotFather.
+Официальный Login Widget **требует бота** — без него Telegram не отдаёт сессию пользователя.
 
-Чтобы включить настоящий виджет:
+1. Создайте бота у [@BotFather](https://t.me/BotFather) → `/newbot`
+2. Скопируйте token
+3. BotFather → ваш бот → **Bot Settings → Domain** → домен фронта, например:
+   `frontend-eight-eosin-65.vercel.app` (без `https://`)
+4. На Render задайте env:
+   - `TELEGRAM_BOT_TOKEN` = токен от BotFather
+   - `TELEGRAM_BOT_USERNAME` = имя бота **без** `@`
+5. Redeploy бэкенда
 
-1. Создайте бота у @BotFather  
-2. В BotFather → Bot Settings → Domain — домен фронта  
-3. На Render задайте `TELEGRAM_BOT_TOKEN` и `TELEGRAM_BOT_USERNAME`  
-4. Можно выключить lite: `TELEGRAM_LITE_AUTH=false`
+После этого на лендинге появится кнопка Telegram — вход без ручного ввода имени.
+
+Опционально (только для отладки): `TELEGRAM_LITE_AUTH=true` — ручной ввод username.
 
 ---
 

@@ -2,6 +2,8 @@ package com.groupawards.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 
@@ -25,9 +27,9 @@ public class Nominee {
     @Column(nullable = false)
     private String reportName;
 
-    @Lob
-    @Basic(fetch = FetchType.LAZY)
+    @JdbcTypeCode(SqlTypes.BINARY)
     @Column(columnDefinition = "BYTEA")
+    @Basic(fetch = FetchType.LAZY)
     private byte[] imageData;
 
     private String imageContentType;

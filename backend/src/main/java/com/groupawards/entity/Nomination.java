@@ -2,6 +2,8 @@ package com.groupawards.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.HashSet;
@@ -26,9 +28,9 @@ public class Nomination {
     @Column(length = 4000)
     private String description;
 
-    @Lob
-    @Basic(fetch = FetchType.LAZY)
+    @JdbcTypeCode(SqlTypes.BINARY)
     @Column(columnDefinition = "BYTEA")
+    @Basic(fetch = FetchType.LAZY)
     private byte[] imageData;
 
     private String imageContentType;

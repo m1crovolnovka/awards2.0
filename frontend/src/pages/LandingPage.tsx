@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import * as api from '../api/endpoints';
 import { NetworkError } from '../api/client';
 import { useAuth } from '../hooks/AuthContext';
@@ -19,10 +19,7 @@ export function LandingPage() {
   const { online, checking, recheck } = useBackendStatus();
   const [config, setConfig] = useState<PublicConfig | null>(null);
   const [error, setError] = useState('');
-  const [modalOpen, setModalOpen] = useState(false);
-  const [username, setUsername] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [widgetReady, setWidgetReady] = useState(false);
   const slotRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -48,18 +45,28 @@ export function LandingPage() {
     };
 
     const bot = config?.telegramBotUsername;
-    if (config?.telegramAuthMode !== 'widget' || !bot || !slotRef.current) return;
+    const canWidget =
+      config?.telegramAuthMode === 'widget' &&
+      !!bot &&
+      bot !== 'REPLACE_ME' &&
+      !!slotRef.current;
 
-    slotRef.current.innerHTML = '';
+    if (!canWidget) {
+      setWidgetReady(false);
+      return;
+    }
+
+    slotRef.current!.innerHTML = '';
     const script = document.createElement('script');
     script.src = 'https://telegram.org/js/telegram-widget.js?22';
     script.async = true;
     script.setAttribute('data-telegram-login', bot);
     script.setAttribute('data-size', 'large');
-    script.setAttribute('data-radius', '0');
+    script.setAttribute('data-radius', '4');
     script.setAttribute('data-onauth', 'onTelegramAuth(user)');
     script.setAttribute('data-request-access', 'write');
-    slotRef.current.appendChild(script);
+    script.onload = () => setWidgetReady(true);
+    slotRef.current!.appendChild(script);
 
     return () => {
       window.onTelegramAuth = undefined;
@@ -82,22 +89,7 @@ export function LandingPage() {
   if (user?.role === 'ADMIN') return <Navigate to="/admin" replace />;
   if (user?.role === 'USER') return <Navigate to="/vote" replace />;
 
-  const useLite = config?.telegramAuthMode === 'lite' || config?.liteAuthEnabled;
-
-  const onLiteSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-    try {
-      const res = await api.loginTelegramLite(username, displayName);
-      loginWithToken(res);
-      setModalOpen(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ошибка входа');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const botConfigured = config?.telegramAuthMode === 'widget';
 
   return (
     <div className="landing">
@@ -138,93 +130,42 @@ export function LandingPage() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.35 }}
           >
-            Войдите через Telegram, выберите номинацию и отдайте голос за одного номинанта.
+            Войдите через Telegram одной кнопкой — без ручного ввода имени.
           </motion.p>
 
           {error && <div className="error-banner">{error}</div>}
 
           <div className="telegram-slot">
-            {config?.telegramAuthMode === 'widget' ? (
-              <div ref={slotRef} />
+            {botConfigured ? (
+              <div>
+                <div ref={slotRef} />
+                {!widgetReady && (
+                  <p style={{ color: 'var(--muted)', marginTop: '0.75rem' }}>Загрузка Telegram…</p>
+                )}
+              </div>
             ) : (
-              <button
-                type="button"
-                className="tg-login-btn"
-                onClick={() => setModalOpen(true)}
-                disabled={!useLite}
-              >
-                <TelegramIcon />
-                Войти через Telegram
-              </button>
+              <div className="panel" style={{ maxWidth: 520 }}>
+                <p style={{ marginTop: 0 }}>
+                  Чтобы вход шёл через Telegram без ручного ввода, на бэкенде (Render) задайте:
+                </p>
+                <ul style={{ color: 'var(--silver)', lineHeight: 1.6 }}>
+                  <li>
+                    <code>TELEGRAM_BOT_TOKEN</code>
+                  </li>
+                  <li>
+                    <code>TELEGRAM_BOT_USERNAME</code> — имя бота без @
+                  </li>
+                </ul>
+                <p style={{ color: 'var(--muted)' }}>
+                  В @BotFather → Bot Settings → Domain укажите домен фронта:
+                  <br />
+                  <code>frontend-eight-eosin-65.vercel.app</code>
+                </p>
+              </div>
             )}
           </div>
         </div>
       </section>
-
-      <AnimatePresence>
-        {modalOpen && (
-          <motion.div
-            className="modal-backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setModalOpen(false)}
-          >
-            <motion.form
-              className="modal-panel"
-              initial={{ y: 40, opacity: 0, scale: 0.96 }}
-              animate={{ y: 0, opacity: 1, scale: 1 }}
-              exit={{ y: 24, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              onSubmit={(e) => void onLiteSubmit(e)}
-            >
-              <h2>Вход через Telegram</h2>
-              <p>
-                Бот не нужен: укажите свой Telegram username и имя — так мы узнаем вас при следующем
-                входе.
-              </p>
-              <div className="field">
-                <label>Telegram username</label>
-                <input
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="@nickname"
-                  required
-                  autoFocus
-                />
-              </div>
-              <div className="field">
-                <label>Как вас показывать</label>
-                <input
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Имя"
-                  required
-                />
-              </div>
-              <div className="actions">
-                <button className="btn btn-primary" type="submit" disabled={loading}>
-                  {loading ? 'Вход…' : 'Войти'}
-                </button>
-                <button className="btn btn-ghost" type="button" onClick={() => setModalOpen(false)}>
-                  Отмена
-                </button>
-              </div>
-            </motion.form>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
-  );
-}
-
-function TelegramIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M21.5 3.5 2.8 10.7c-1.3.5-1.3 1.2-.2 1.5l4.7 1.5 1.8 5.5c.2.7.4.9 1 .9.6 0 .8-.3 1.1-.6l2.7-2.6 5.6 4.1c1 .6 1.8.3 2.1-.9l3.7-17.5c.4-1.5-.5-2.2-1.8-1.7Z"
-        fill="currentColor"
-      />
-    </svg>
   );
 }
