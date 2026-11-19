@@ -676,6 +676,24 @@ select {
   gap: 0.5rem;
 }
 
+.tg-widget-wrap {
+  display: grid;
+  gap: 1rem;
+  justify-items: start;
+}
+
+.tg-steps {
+  margin: 0;
+  padding-left: 1.2rem;
+  color: var(--muted);
+  max-width: 36rem;
+  line-height: 1.55;
+}
+
+.tg-steps li {
+  margin-bottom: 0.35rem;
+}
+
 /* Telegram login button */
 .tg-login-btn {
   display: inline-flex;
