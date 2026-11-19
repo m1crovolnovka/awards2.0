@@ -19,19 +19,10 @@ public class AuthController {
         return authService.loginTelegram(request);
     }
 
-    /** Local demo login when TELEGRAM_BOT_TOKEN is not configured. */
-    @PostMapping("/telegram/dev")
-    public AuthResponse telegramDev(@RequestParam(defaultValue = "Demo User") String name) {
-        long fakeId = 100000L + Math.abs(name.hashCode() % 1_000_000);
-        return authService.loginTelegram(new TelegramAuthRequest(
-                fakeId,
-                name,
-                null,
-                name.replace(' ', '_').toLowerCase(),
-                null,
-                java.time.Instant.now().getEpochSecond(),
-                "dev"
-        ));
+    /** Login without Telegram bot — username + display name. */
+    @PostMapping("/telegram/lite")
+    public AuthResponse telegramLite(@Valid @RequestBody TelegramLiteRequest request) {
+        return authService.loginTelegramLite(request);
     }
 
     @PostMapping("/admin/login")

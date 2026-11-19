@@ -15,6 +15,12 @@ export const getVotingStatus = () => api<VotingStatus>('/api/public/voting-statu
 export const loginTelegram = (payload: Record<string, unknown>) =>
   api<AuthResponse>('/api/auth/telegram', { method: 'POST', body: JSON.stringify(payload) });
 
+export const loginTelegramLite = (username: string, displayName: string) =>
+  api<AuthResponse>('/api/auth/telegram/lite', {
+    method: 'POST',
+    body: JSON.stringify({ username, displayName }),
+  });
+
 export const loginAdmin = (login: string, password: string) =>
   api<AuthResponse>('/api/auth/admin/login', {
     method: 'POST',

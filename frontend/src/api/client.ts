@@ -17,6 +17,24 @@ export class ApiError extends Error {
   }
 }
 
+export class NetworkError extends Error {
+  constructor(message = 'Backend unreachable') {
+    super(message);
+    this.name = 'NetworkError';
+  }
+}
+
+/** Empty in dev (Vite proxy). Set VITE_API_URL in production, e.g. https://xxx.onrender.com */
+export function apiBase(): string {
+  const base = import.meta.env.VITE_API_URL as string | undefined;
+  return base ? base.replace(/\/$/, '') : '';
+}
+
+function resolveUrl(path: string): string {
+  if (path.startsWith('http')) return path;
+  return `${apiBase()}${path}`;
+}
+
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers || {});
   const token = getToken();
@@ -25,7 +43,13 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers.set('Content-Type', 'application/json');
   }
 
-  const res = await fetch(path, { ...init, headers });
+  let res: Response;
+  try {
+    res = await fetch(resolveUrl(path), { ...init, headers });
+  } catch {
+    throw new NetworkError();
+  }
+
   if (res.status === 401) {
     setToken(null);
   }
@@ -45,24 +69,20 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   return res.blob() as Promise<T>;
 }
 
-export function mediaUrl(path: string | null | undefined): string | null {
-  if (!path) return null;
-  const token = getToken();
-  if (!token) return path;
-  const sep = path.includes('?') ? '&' : '?';
-  return `${path}${sep}access_token=${encodeURIComponent(token)}`;
-}
-
 /** Fetch protected image as object URL */
 export async function fetchImageObjectUrl(path: string | null | undefined): Promise<string | null> {
   if (!path) return null;
   const token = getToken();
-  const res = await fetch(path, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  if (!res.ok) return null;
-  const blob = await res.blob();
-  return URL.createObjectURL(blob);
+  try {
+    const res = await fetch(resolveUrl(path), {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return URL.createObjectURL(blob);
+  } catch {
+    return null;
+  }
 }
 
 export async function downloadBlob(path: string, filename: string) {
@@ -73,4 +93,13 @@ export async function downloadBlob(path: string, filename: string) {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+export async function pingBackend(): Promise<boolean> {
+  try {
+    const res = await fetch(resolveUrl('/api/public/health'), { method: 'GET' });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }

@@ -20,21 +20,32 @@ public class TelegramAuthValidator {
 
     private final String botToken;
     private final long maxAgeSeconds;
+    private final boolean liteAuthEnabled;
 
     public TelegramAuthValidator(
             @Value("${app.telegram.bot-token}") String botToken,
-            @Value("${app.telegram.auth-max-age-seconds}") long maxAgeSeconds
+            @Value("${app.telegram.auth-max-age-seconds}") long maxAgeSeconds,
+            @Value("${app.telegram.lite-auth:true}") boolean liteAuthEnabled
     ) {
         this.botToken = botToken;
         this.maxAgeSeconds = maxAgeSeconds;
+        this.liteAuthEnabled = liteAuthEnabled;
+    }
+
+    public boolean isBotConfigured() {
+        return botToken != null && !botToken.isBlank() && !"REPLACE_ME".equals(botToken);
+    }
+
+    /** Lite login is on by default when bot is missing; can also be forced via config. */
+    public boolean isLiteAllowed() {
+        return liteAuthEnabled || !isBotConfigured();
     }
 
     public boolean isValid(TelegramAuthRequest request) {
         if (request == null || request.id() == null || request.hash() == null || request.auth_date() == null) {
             return false;
         }
-        if ("REPLACE_ME".equals(botToken) || botToken.isBlank()) {
-            // Dev mode: accept only explicitly mocked payloads with hash=dev
+        if (!isBotConfigured()) {
             return "dev".equalsIgnoreCase(request.hash());
         }
 

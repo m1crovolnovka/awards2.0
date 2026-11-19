@@ -62,6 +62,10 @@ export interface NominationStats {
 
 export interface PublicConfig {
   telegramBotUsername: string;
+  telegramAuthMode: 'widget' | 'lite';
+  liteAuthEnabled: boolean;
   votingOpen: boolean;
   announcementAt: string;
 }
+
+export type ErrorKind = '404' | '403' | 'offline' | '500';

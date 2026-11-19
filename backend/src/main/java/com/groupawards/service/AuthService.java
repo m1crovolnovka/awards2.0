@@ -44,6 +44,52 @@ public class AuthService {
         return new AuthResponse(jwtService.generateToken(user), toMe(user));
     }
 
+    /**
+     * Bot-free login for group voting: identity is stable by Telegram @username.
+     * Not cryptographically verified by Telegram — enable only when bot is not configured
+     * or when TELEGRAM_LITE_AUTH=true.
+     */
+    @Transactional
+    public AuthResponse loginTelegramLite(TelegramLiteRequest request) {
+        if (!telegramAuthValidator.isLiteAllowed()) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Lite Telegram login is disabled");
+        }
+
+        String username = normalizeUsername(request.username());
+        if (username.length() < 2) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Invalid Telegram username");
+        }
+
+        long syntheticId = syntheticTelegramId(username);
+        AppUser user = userRepository.findByTelegramId(syntheticId)
+                .orElseGet(() -> AppUser.builder()
+                        .telegramId(syntheticId)
+                        .role(Role.USER)
+                        .mustChangePassword(false)
+                        .build());
+
+        user.setUsername(username);
+        user.setFirstName(request.displayName().trim());
+        user.setLastName(null);
+        user = userRepository.save(user);
+
+        return new AuthResponse(jwtService.generateToken(user), toMe(user));
+    }
+
+    private static String normalizeUsername(String raw) {
+        String u = raw == null ? "" : raw.trim();
+        if (u.startsWith("@")) {
+            u = u.substring(1);
+        }
+        return u.toLowerCase().replaceAll("[^a-z0-9_]", "");
+    }
+
+    private static long syntheticTelegramId(String username) {
+        // Stable positive id in a range that won't collide with real Telegram ids in practice for this app
+        long hash = username.hashCode() & 0xffffffffL;
+        return 2_000_000_000L + hash;
+    }
+
     @Transactional(readOnly = true)
     public AuthResponse loginAdmin(AdminLoginRequest request) {
         AppUser admin = userRepository.findByAdminLogin(request.login())

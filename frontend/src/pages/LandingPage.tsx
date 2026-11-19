@@ -1,8 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, Navigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import * as api from '../api/endpoints';
+import { NetworkError } from '../api/client';
 import { useAuth } from '../hooks/AuthContext';
+import { useBackendStatus } from '../hooks/BackendStatus';
+import { OfflinePage } from './ErrorPages';
+import type { PublicConfig } from '../types';
 
 declare global {
   interface Window {
@@ -12,13 +16,25 @@ declare global {
 
 export function LandingPage() {
   const { user, loginWithToken } = useAuth();
-  const [bot, setBot] = useState('');
+  const { online, checking, recheck } = useBackendStatus();
+  const [config, setConfig] = useState<PublicConfig | null>(null);
   const [error, setError] = useState('');
+  const [modalOpen, setModalOpen] = useState(false);
+  const [username, setUsername] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [loading, setLoading] = useState(false);
   const slotRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    void api.getConfig().then((c) => setBot(c.telegramBotUsername)).catch(() => setBot(''));
-  }, []);
+    if (online === false) return;
+    void api
+      .getConfig()
+      .then(setConfig)
+      .catch((e) => {
+        if (e instanceof NetworkError) return;
+        setError(e instanceof Error ? e.message : 'Ошибка конфигурации');
+      });
+  }, [online]);
 
   useEffect(() => {
     window.onTelegramAuth = async (tgUser) => {
@@ -31,7 +47,8 @@ export function LandingPage() {
       }
     };
 
-    if (!bot || bot === 'REPLACE_ME' || !slotRef.current) return;
+    const bot = config?.telegramBotUsername;
+    if (config?.telegramAuthMode !== 'widget' || !bot || !slotRef.current) return;
 
     slotRef.current.innerHTML = '';
     const script = document.createElement('script');
@@ -47,10 +64,40 @@ export function LandingPage() {
     return () => {
       window.onTelegramAuth = undefined;
     };
-  }, [bot, loginWithToken]);
+  }, [config, loginWithToken]);
+
+  if (checking && online === null) {
+    return (
+      <div className="boot-screen">
+        <div className="boot-spinner" />
+        <p>CONNECTING</p>
+      </div>
+    );
+  }
+
+  if (online === false) {
+    return <OfflinePage onRetry={() => void recheck()} />;
+  }
 
   if (user?.role === 'ADMIN') return <Navigate to="/admin" replace />;
   if (user?.role === 'USER') return <Navigate to="/vote" replace />;
+
+  const useLite = config?.telegramAuthMode === 'lite' || config?.liteAuthEnabled;
+
+  const onLiteSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      const res = await api.loginTelegramLite(username, displayName);
+      loginWithToken(res);
+      setModalOpen(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ошибка входа');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="landing">
@@ -92,42 +139,92 @@ export function LandingPage() {
             transition={{ delay: 0.35 }}
           >
             Войдите через Telegram, выберите номинацию и отдайте голос за одного номинанта.
-            Стиль трассы. Скорость решения.
           </motion.p>
 
           {error && <div className="error-banner">{error}</div>}
 
           <div className="telegram-slot">
-            {bot && bot !== 'REPLACE_ME' ? (
+            {config?.telegramAuthMode === 'widget' ? (
               <div ref={slotRef} />
             ) : (
-              <div className="panel" style={{ maxWidth: 420 }}>
-                <p style={{ marginTop: 0 }}>
-                  Telegram-бот ещё не настроен. Для локальной проверки можно войти в demo-режиме:
-                </p>
-                <button
-                  className="btn btn-primary"
-                  type="button"
-                  onClick={() =>
-                    void api
-                      .loginTelegram({
-                        id: 900001,
-                        first_name: 'Demo',
-                        username: 'demo_user',
-                        auth_date: Math.floor(Date.now() / 1000),
-                        hash: 'dev',
-                      })
-                      .then(loginWithToken)
-                      .catch((e) => setError(e instanceof Error ? e.message : 'Ошибка demo-входа'))
-                  }
-                >
-                  Demo Login
-                </button>
-              </div>
+              <button
+                type="button"
+                className="tg-login-btn"
+                onClick={() => setModalOpen(true)}
+                disabled={!useLite}
+              >
+                <TelegramIcon />
+                Войти через Telegram
+              </button>
             )}
           </div>
         </div>
       </section>
+
+      <AnimatePresence>
+        {modalOpen && (
+          <motion.div
+            className="modal-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setModalOpen(false)}
+          >
+            <motion.form
+              className="modal-panel"
+              initial={{ y: 40, opacity: 0, scale: 0.96 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: 24, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              onSubmit={(e) => void onLiteSubmit(e)}
+            >
+              <h2>Вход через Telegram</h2>
+              <p>
+                Бот не нужен: укажите свой Telegram username и имя — так мы узнаем вас при следующем
+                входе.
+              </p>
+              <div className="field">
+                <label>Telegram username</label>
+                <input
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="@nickname"
+                  required
+                  autoFocus
+                />
+              </div>
+              <div className="field">
+                <label>Как вас показывать</label>
+                <input
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="Имя"
+                  required
+                />
+              </div>
+              <div className="actions">
+                <button className="btn btn-primary" type="submit" disabled={loading}>
+                  {loading ? 'Вход…' : 'Войти'}
+                </button>
+                <button className="btn btn-ghost" type="button" onClick={() => setModalOpen(false)}>
+                  Отмена
+                </button>
+              </div>
+            </motion.form>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
+  );
+}
+
+function TelegramIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M21.5 3.5 2.8 10.7c-1.3.5-1.3 1.2-.2 1.5l4.7 1.5 1.8 5.5c.2.7.4.9 1 .9.6 0 .8-.3 1.1-.6l2.7-2.6 5.6 4.1c1 .6 1.8.3 2.1-.9l3.7-17.5c.4-1.5-.5-2.2-1.8-1.7Z"
+        fill="currentColor"
+      />
+    </svg>
   );
 }

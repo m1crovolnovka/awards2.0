@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/AuthContext';
+import { ForbiddenPage } from '../pages/ErrorPages';
 import type { Role } from '../types';
 
 export function ProtectedRoute({
@@ -26,7 +27,7 @@ export function ProtectedRoute({
   }
 
   if (role && user.role !== role) {
-    return <Navigate to={user.role === 'ADMIN' ? '/admin' : '/vote'} replace />;
+    return <ForbiddenPage />;
   }
 
   if (user.role === 'ADMIN' && user.mustChangePassword && location.pathname !== '/admin/change-password') {

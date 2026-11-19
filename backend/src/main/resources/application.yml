@@ -1,11 +1,11 @@
 server:
-  port: 8080
+  port: ${PORT:8080}
 
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/group_awards
-    username: awards
-    password: awards_secret
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/group_awards}
+    username: ${SPRING_DATASOURCE_USERNAME:awards}
+    password: ${SPRING_DATASOURCE_PASSWORD:awards_secret}
   jpa:
     hibernate:
       ddl-auto: update
@@ -28,6 +28,7 @@ app:
     bot-token: ${TELEGRAM_BOT_TOKEN:REPLACE_ME}
     bot-username: ${TELEGRAM_BOT_USERNAME:REPLACE_ME}
     auth-max-age-seconds: 86400
+    lite-auth: ${TELEGRAM_LITE_AUTH:true}
   admin:
     default-username: admin
     default-password: admin

@@ -676,6 +676,188 @@ select {
   gap: 0.5rem;
 }
 
+/* Telegram login button */
+.tg-login-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  border: 0;
+  cursor: pointer;
+  background: linear-gradient(135deg, #2aabee, #229ed9);
+  color: #fff;
+  font-family: var(--font-display);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.95rem 1.4rem;
+  clip-path: polygon(0 0, 100% 0, 96% 100%, 0 100%);
+  box-shadow: 0 12px 36px rgba(42, 171, 238, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.tg-login-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 40px rgba(42, 171, 238, 0.45);
+}
+
+.tg-login-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(3, 6, 12, 0.78);
+  backdrop-filter: blur(8px);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.modal-panel {
+  width: min(440px, 100%);
+  background: linear-gradient(180deg, #152033, #0b1220);
+  border: 1px solid var(--line);
+  padding: 1.5rem;
+}
+
+.modal-panel h2 {
+  margin: 0 0 0.5rem;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.modal-panel > p {
+  color: var(--muted);
+  margin-top: 0;
+}
+
+/* Error / status pages */
+.error-stage {
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background:
+    radial-gradient(900px 500px at 80% 10%, rgba(225, 6, 0, 0.28), transparent 55%),
+    linear-gradient(160deg, #05080f, #0a1220 50%, #070b14);
+}
+
+.error-track span {
+  position: absolute;
+  left: -20%;
+  width: 70%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.28), transparent);
+  animation: trackDash 1.4s ease-in-out infinite;
+}
+
+@keyframes trackDash {
+  0% {
+    transform: translateX(0);
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateX(55%);
+    opacity: 0.15;
+  }
+}
+
+.error-chequer {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 28px;
+  background: repeating-linear-gradient(
+    90deg,
+    #fff 0 18px,
+    #111 18px 36px
+  );
+  opacity: 0.85;
+  animation: chequerSlide 8s linear infinite;
+}
+
+@keyframes chequerSlide {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 72px 0;
+  }
+}
+
+.error-card {
+  position: relative;
+  z-index: 2;
+  width: min(560px, 100%);
+  padding: 2rem 1.5rem 1.5rem;
+  border: 1px solid var(--line);
+  background: rgba(10, 16, 28, 0.88);
+  text-align: center;
+  overflow: hidden;
+}
+
+.error-code {
+  font-family: var(--font-display);
+  font-size: clamp(3.5rem, 14vw, 6rem);
+  line-height: 0.9;
+  letter-spacing: 0.04em;
+  color: var(--red);
+  text-shadow: 0 0 40px var(--glow);
+}
+
+.error-card h1 {
+  font-family: var(--font-display);
+  letter-spacing: 0.12em;
+  margin: 0.6rem 0 0.4rem;
+  font-size: clamp(1.4rem, 4vw, 2rem);
+}
+
+.error-card p {
+  color: var(--muted);
+  margin: 0 auto 1.25rem;
+  max-width: 36ch;
+}
+
+.error-car-wrap {
+  height: 48px;
+  margin: 0.5rem 0 1.25rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.error-car {
+  position: absolute;
+  left: -40%;
+  top: 8px;
+  width: 160px;
+  height: 28px;
+  background: linear-gradient(90deg, transparent, var(--red), #fff 45%, var(--orange), transparent);
+  clip-path: polygon(5% 40%, 20% 15%, 70% 20%, 95% 45%, 80% 80%, 25% 75%, 0 55%);
+  animation: errorCar 2.2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+  filter: drop-shadow(0 0 12px var(--glow));
+}
+
+@keyframes errorCar {
+  0% {
+    transform: translateX(0) skewX(-10deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(320%) skewX(-4deg);
+    opacity: 0.4;
+  }
+}
+
 @media (max-width: 860px) {
   .nom-card {
     grid-template-columns: 1fr;

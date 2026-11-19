@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { getToken, setToken } from '../api/client';
+import { getToken, NetworkError, setToken } from '../api/client';
 import * as api from '../api/endpoints';
 import type { AuthResponse, UserMe } from '../types';
 
@@ -34,9 +34,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const u = await api.me();
       setUser(u);
-    } catch {
-      setToken(null);
-      setUser(null);
+    } catch (e) {
+      if (!(e instanceof NetworkError)) {
+        setToken(null);
+        setUser(null);
+      }
     } finally {
       setLoading(false);
     }
