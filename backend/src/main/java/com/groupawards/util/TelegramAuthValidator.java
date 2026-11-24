@@ -36,9 +36,21 @@ public class TelegramAuthValidator {
         return botToken != null && !botToken.isBlank() && !"REPLACE_ME".equals(botToken);
     }
 
-    /** Lite login is on by default when bot is missing; can also be forced via config. */
+    /** Numeric bot id = part of token before ':'. Needed for oauth.telegram.org redirect. */
+    public long getBotId() {
+        if (!isBotConfigured()) {
+            return 0L;
+        }
+        try {
+            return Long.parseLong(botToken.split(":", 2)[0]);
+        } catch (Exception e) {
+            return 0L;
+        }
+    }
+
+    /** Legacy flag (kept for /api/public/config). Web @username login is always allowed. */
     public boolean isLiteAllowed() {
-        return liteAuthEnabled || !isBotConfigured();
+        return true;
     }
 
     public boolean isValid(TelegramAuthRequest request) {

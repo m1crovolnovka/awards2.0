@@ -21,6 +21,12 @@ export const loginTelegramLite = (username: string, displayName: string) =>
     body: JSON.stringify({ username, displayName }),
   });
 
+export const loginTelegramWebApp = (initData: string) =>
+  api<AuthResponse>('/api/auth/telegram/webapp', {
+    method: 'POST',
+    body: JSON.stringify({ initData }),
+  });
+
 export const loginAdmin = (login: string, password: string) =>
   api<AuthResponse>('/api/auth/admin/login', {
     method: 'POST',

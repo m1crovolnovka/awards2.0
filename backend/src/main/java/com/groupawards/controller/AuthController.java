@@ -25,6 +25,12 @@ public class AuthController {
         return authService.loginTelegramLite(request);
     }
 
+    /** Login from Telegram WebApp / in-app browser (initData). */
+    @PostMapping("/telegram/webapp")
+    public AuthResponse telegramWebApp(@Valid @RequestBody TelegramWebAppRequest request) {
+        return authService.loginTelegramWebApp(request);
+    }
+
     @PostMapping("/admin/login")
     public AuthResponse adminLogin(@Valid @RequestBody AdminLoginRequest request) {
         return authService.loginAdmin(request);

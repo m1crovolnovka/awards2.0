@@ -26,6 +26,9 @@ public final class AuthDtos {
     ) {
     }
 
+    public record TelegramWebAppRequest(@NotBlank String initData) {
+    }
+
     public record AdminLoginRequest(
             @NotBlank String login,
             @NotBlank String password

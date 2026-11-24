@@ -44,6 +44,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/auth/telegram",
                                 "/api/auth/telegram/lite",
+                                "/api/auth/telegram/webapp",
                                 "/api/auth/admin/login",
                                 "/api/public/**"
                         ).permitAll()

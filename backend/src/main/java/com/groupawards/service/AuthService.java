@@ -5,8 +5,10 @@ import com.groupawards.entity.AppUser;
 import com.groupawards.entity.Role;
 import com.groupawards.repository.AppUserRepository;
 import com.groupawards.security.JwtService;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.groupawards.util.ApiException;
 import com.groupawards.util.TelegramAuthValidator;
+import com.groupawards.util.TelegramWebAppValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -21,6 +23,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final TelegramAuthValidator telegramAuthValidator;
+    private final TelegramWebAppValidator telegramWebAppValidator;
 
     @Transactional
     public AuthResponse loginTelegram(TelegramAuthRequest request) {
@@ -51,10 +54,7 @@ public class AuthService {
      */
     @Transactional
     public AuthResponse loginTelegramLite(TelegramLiteRequest request) {
-        if (!telegramAuthValidator.isLiteAllowed()) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "Lite Telegram login is disabled");
-        }
-
+        // Always available for the website button — no Telegram app required
         String username = normalizeUsername(request.username());
         if (username.length() < 2) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Invalid Telegram username");
@@ -76,6 +76,38 @@ public class AuthService {
         user.setLastName(null);
         user = userRepository.save(user);
 
+        return new AuthResponse(jwtService.generateToken(user), toMe(user));
+    }
+
+    /** Login from Telegram in-app browser / Mini App (no phone code). */
+    @Transactional
+    public AuthResponse loginTelegramWebApp(TelegramWebAppRequest request) {
+        JsonNode tgUser = telegramWebAppValidator.parseUserIfValid(request.initData());
+        if (tgUser == null || !tgUser.has("id")) {
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "Invalid Telegram WebApp data");
+        }
+
+        long telegramId = tgUser.get("id").asLong();
+        AppUser user = userRepository.findByTelegramId(telegramId)
+                .orElseGet(() -> AppUser.builder()
+                        .telegramId(telegramId)
+                        .role(Role.USER)
+                        .mustChangePassword(false)
+                        .build());
+
+        if (tgUser.hasNonNull("first_name")) {
+            user.setFirstName(tgUser.get("first_name").asText());
+        }
+        if (tgUser.hasNonNull("last_name")) {
+            user.setLastName(tgUser.get("last_name").asText());
+        }
+        if (tgUser.hasNonNull("username")) {
+            user.setUsername(tgUser.get("username").asText());
+        }
+        if (tgUser.hasNonNull("photo_url")) {
+            user.setPhotoUrl(tgUser.get("photo_url").asText());
+        }
+        user = userRepository.save(user);
         return new AuthResponse(jwtService.generateToken(user), toMe(user));
     }
 

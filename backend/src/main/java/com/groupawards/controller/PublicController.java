@@ -38,6 +38,7 @@ public class PublicController {
 
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("telegramBotUsername", botUsername);
+        map.put("telegramBotId", telegramAuthValidator.getBotId());
         map.put("telegramAuthMode", widget ? "widget" : "lite");
         map.put("liteAuthEnabled", telegramAuthValidator.isLiteAllowed());
         map.put("votingOpen", status.votingOpen());

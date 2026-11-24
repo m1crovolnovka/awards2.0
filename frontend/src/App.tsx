@@ -8,6 +8,7 @@ import { AdminLoginPage } from './pages/AdminLoginPage';
 import { ForbiddenPage, NotFoundPage, ServerErrorPage } from './pages/ErrorPages';
 import { LandingPage } from './pages/LandingPage';
 import { NominationPage } from './pages/NominationPage';
+import { TelegramCallbackPage } from './pages/TelegramCallbackPage';
 import { VoteHomePage } from './pages/VoteHomePage';
 
 export default function App() {
@@ -16,6 +17,7 @@ export default function App() {
       <AuthProvider>
         <Routes>
           <Route path="/" element={<LandingPage />} />
+          <Route path="/auth/telegram" element={<TelegramCallbackPage />} />
           <Route path="/admin/login" element={<AdminLoginPage />} />
           <Route
             path="/admin/change-password"
