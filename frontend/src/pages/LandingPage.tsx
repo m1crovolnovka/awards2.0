@@ -3,33 +3,29 @@ import { Link, Navigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import * as api from '../api/endpoints';
 import { NetworkError } from '../api/client';
+import { TelegramLoginWidget } from '../components/TelegramLoginWidget';
 import { useAuth } from '../hooks/AuthContext';
 import { useBackendStatus } from '../hooks/BackendStatus';
 import { OfflinePage } from './ErrorPages';
+import type { PublicConfig } from '../types';
 
-/**
- * Web-only Telegram-style login.
- * No Telegram app / SMS / oauth phone codes — user signs in with @username on the website.
- */
 export function LandingPage() {
   const { user, loginWithToken } = useAuth();
   const { online, checking, recheck } = useBackendStatus();
+  const [config, setConfig] = useState<PublicConfig | null>(null);
   const [error, setError] = useState('');
-  const [modalOpen, setModalOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [altOpen, setAltOpen] = useState(false);
   const [username, setUsername] = useState('');
   const [displayName, setDisplayName] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     if (online === false) return;
     void api
       .getConfig()
-      .then(() => setReady(true))
+      .then(setConfig)
       .catch((e) => {
         if (e instanceof NetworkError) return;
-        // Even if config fails, allow trying login — backend may still accept lite auth
-        setReady(true);
         setError(e instanceof Error ? e.message : 'Ошибка конфигурации');
       });
   }, [online]);
@@ -50,14 +46,18 @@ export function LandingPage() {
   if (user?.role === 'ADMIN') return <Navigate to="/admin" replace />;
   if (user?.role === 'USER') return <Navigate to="/vote" replace />;
 
-  const onSubmit = async (e: FormEvent) => {
+  const bot = config?.telegramBotUsername?.replace(/^@/, '') || '';
+  const telegramReady =
+    config?.telegramAuthMode === 'widget' && !!bot && bot !== 'REPLACE_ME';
+
+  const onAltSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     try {
       const res = await api.loginTelegramLite(username, displayName || username);
       loginWithToken(res);
-      setModalOpen(false);
+      setAltOpen(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось войти');
     } finally {
@@ -104,36 +104,74 @@ export function LandingPage() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.35 }}
           >
-            Веб-голосование. Войдите через Telegram прямо на сайте — приложение не нужно.
+            Авторизация через Telegram на сайте. Выберите номинацию и проголосуйте.
           </motion.p>
 
-          {error && !modalOpen && <div className="error-banner">{error}</div>}
+          {error && !altOpen && <div className="error-banner">{error}</div>}
+          {loading && <div className="success-banner">Авторизация…</div>}
 
           <div className="telegram-slot">
-            <button
-              type="button"
-              className="tg-login-btn"
-              disabled={!ready}
-              onClick={() => {
-                setError('');
-                setModalOpen(true);
-              }}
-            >
-              <TelegramIcon />
-              Войти через Telegram
-            </button>
+            {telegramReady ? (
+              <div className="tg-widget-wrap">
+                <TelegramLoginWidget botUsername={bot} />
+                <p className="tg-steps" style={{ listStyle: 'none', paddingLeft: 0 }}>
+                  Нажмите кнопку Telegram выше — сайт получит ваш профиль после подтверждения входа.
+                </p>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={() => {
+                    setError('');
+                    setAltOpen(true);
+                  }}
+                >
+                  Не открывается? Войти по @username
+                </button>
+              </div>
+            ) : (
+              <div className="tg-widget-wrap">
+                <button
+                  type="button"
+                  className="tg-login-btn"
+                  onClick={() => {
+                    setError('');
+                    setAltOpen(true);
+                  }}
+                >
+                  <TelegramIcon />
+                  Войти через Telegram
+                </button>
+                <div className="panel" style={{ maxWidth: 520, marginTop: '1rem' }}>
+                  <p style={{ marginTop: 0, color: 'var(--muted)' }}>
+                    Для официальной кнопки Telegram Login на Render задайте:
+                  </p>
+                  <ul style={{ color: 'var(--silver)', lineHeight: 1.6 }}>
+                    <li>
+                      <code>TELEGRAM_BOT_TOKEN</code>
+                    </li>
+                    <li>
+                      <code>TELEGRAM_BOT_USERNAME</code> — без @
+                    </li>
+                  </ul>
+                  <p style={{ color: 'var(--muted)', marginBottom: 0 }}>
+                    В @BotFather выполните <code>/setdomain</code> →{' '}
+                    <code>frontend-eight-eosin-65.vercel.app</code>, затем Redeploy бэкенда.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </section>
 
       <AnimatePresence>
-        {modalOpen && (
+        {altOpen && (
           <motion.div
             className="modal-backdrop"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setModalOpen(false)}
+            onClick={() => setAltOpen(false)}
           >
             <motion.form
               className="modal-panel"
@@ -141,13 +179,13 @@ export function LandingPage() {
               animate={{ y: 0, opacity: 1, scale: 1 }}
               exit={{ y: 24, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              onSubmit={(e) => void onSubmit(e)}
+              onSubmit={(e) => void onAltSubmit(e)}
             >
-              <h2>Войти через Telegram</h2>
-              <p>Введите ваш Telegram username. Приложение Telegram и коды не нужны.</p>
+              <h2>Вход по Telegram username</h2>
+              <p>Запасной веб-вход, если официальный виджет недоступен.</p>
               {error && <div className="error-banner">{error}</div>}
               <div className="field">
-                <label>Telegram @username</label>
+                <label>@username</label>
                 <input
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
@@ -155,7 +193,6 @@ export function LandingPage() {
                   required
                   minLength={2}
                   autoFocus
-                  autoComplete="username"
                 />
               </div>
               <div className="field">
@@ -163,15 +200,14 @@ export function LandingPage() {
                 <input
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Как показывать при голосовании"
-                  autoComplete="nickname"
+                  placeholder="Как показывать"
                 />
               </div>
               <div className="actions">
                 <button className="btn btn-primary" type="submit" disabled={loading}>
                   {loading ? 'Вход…' : 'Войти'}
                 </button>
-                <button className="btn btn-ghost" type="button" onClick={() => setModalOpen(false)}>
+                <button className="btn btn-ghost" type="button" onClick={() => setAltOpen(false)}>
                   Отмена
                 </button>
               </div>

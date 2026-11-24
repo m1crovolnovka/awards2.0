@@ -7,6 +7,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -15,17 +17,15 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/telegram")
-    public AuthResponse telegram(@RequestBody TelegramAuthRequest request) {
-        return authService.loginTelegram(request);
+    public AuthResponse telegram(@RequestBody Map<String, Object> body) {
+        return authService.loginTelegram(toTelegramRequest(body));
     }
 
-    /** Login without Telegram bot — username + display name. */
     @PostMapping("/telegram/lite")
     public AuthResponse telegramLite(@Valid @RequestBody TelegramLiteRequest request) {
         return authService.loginTelegramLite(request);
     }
 
-    /** Login from Telegram WebApp / in-app browser (initData). */
     @PostMapping("/telegram/webapp")
     public AuthResponse telegramWebApp(@Valid @RequestBody TelegramWebAppRequest request) {
         return authService.loginTelegramWebApp(request);
@@ -44,5 +44,35 @@ public class AuthController {
     @GetMapping("/me")
     public UserMeResponse me() {
         return authService.me(SecurityUtils.currentUserId());
+    }
+
+    private static TelegramAuthRequest toTelegramRequest(Map<String, Object> body) {
+        return new TelegramAuthRequest(
+                asLong(body.get("id")),
+                asString(body.get("first_name")),
+                asString(body.get("last_name")),
+                asString(body.get("username")),
+                asString(body.get("photo_url")),
+                asLong(body.get("auth_date")),
+                asString(body.get("hash"))
+        );
+    }
+
+    private static String asString(Object value) {
+        return value == null ? null : String.valueOf(value);
+    }
+
+    private static Long asLong(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        String s = String.valueOf(value).trim();
+        if (s.isEmpty()) {
+            return null;
+        }
+        return Long.valueOf(s);
     }
 }
