@@ -24,6 +24,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final TelegramAuthValidator telegramAuthValidator;
     private final TelegramWebAppValidator telegramWebAppValidator;
+    private final TelegramOidcService telegramOidcService;
 
     @Transactional
     public AuthResponse loginTelegram(TelegramAuthRequest request) {
@@ -76,6 +77,26 @@ public class AuthService {
         user.setLastName(null);
         user = userRepository.save(user);
 
+        return new AuthResponse(jwtService.generateToken(user), toMe(user));
+    }
+
+    /** New Telegram Login library — verify OIDC id_token from telegram-login.js */
+    @Transactional
+    public AuthResponse loginTelegramOidc(TelegramOidcRequest request) {
+        TelegramOidcService.VerifiedTelegramUser tg = telegramOidcService.verifyIdToken(request.idToken());
+
+        AppUser user = userRepository.findByTelegramId(tg.telegramId())
+                .orElseGet(() -> AppUser.builder()
+                        .telegramId(tg.telegramId())
+                        .role(Role.USER)
+                        .mustChangePassword(false)
+                        .build());
+
+        user.setFirstName(tg.firstName());
+        user.setLastName(tg.lastName());
+        user.setUsername(tg.username());
+        user.setPhotoUrl(tg.photoUrl());
+        user = userRepository.save(user);
         return new AuthResponse(jwtService.generateToken(user), toMe(user));
     }
 

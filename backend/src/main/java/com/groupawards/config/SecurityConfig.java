@@ -45,6 +45,7 @@ public class SecurityConfig {
                                 "/api/auth/telegram",
                                 "/api/auth/telegram/lite",
                                 "/api/auth/telegram/webapp",
+                                "/api/auth/telegram/oidc",
                                 "/api/auth/admin/login",
                                 "/api/public/**"
                         ).permitAll()

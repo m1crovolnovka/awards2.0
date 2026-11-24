@@ -63,7 +63,8 @@ export interface NominationStats {
 export interface PublicConfig {
   telegramBotUsername: string;
   telegramBotId: number;
-  telegramAuthMode: 'widget' | 'lite';
+  telegramClientId: number;
+  telegramAuthMode: 'oidc' | 'widget' | 'lite';
   liteAuthEnabled: boolean;
   votingOpen: boolean;
   announcementAt: string;

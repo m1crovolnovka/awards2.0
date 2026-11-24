@@ -29,6 +29,10 @@ public final class AuthDtos {
     public record TelegramWebAppRequest(@NotBlank String initData) {
     }
 
+    /** New Telegram Login library (OIDC) — frontend sends id_token. */
+    public record TelegramOidcRequest(@NotBlank String idToken) {
+    }
+
     public record AdminLoginRequest(
             @NotBlank String login,
             @NotBlank String password

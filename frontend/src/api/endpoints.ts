@@ -27,6 +27,12 @@ export const loginTelegramWebApp = (initData: string) =>
     body: JSON.stringify({ initData }),
   });
 
+export const loginTelegramOidc = (idToken: string) =>
+  api<AuthResponse>('/api/auth/telegram/oidc', {
+    method: 'POST',
+    body: JSON.stringify({ idToken }),
+  });
+
 export const loginAdmin = (login: string, password: string) =>
   api<AuthResponse>('/api/auth/admin/login', {
     method: 'POST',

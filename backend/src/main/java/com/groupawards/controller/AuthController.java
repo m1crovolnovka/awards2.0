@@ -31,6 +31,12 @@ public class AuthController {
         return authService.loginTelegramWebApp(request);
     }
 
+    /** New Telegram Login (OIDC) from https://oauth.telegram.org/js/telegram-login.js */
+    @PostMapping("/telegram/oidc")
+    public AuthResponse telegramOidc(@Valid @RequestBody TelegramOidcRequest request) {
+        return authService.loginTelegramOidc(request);
+    }
+
     @PostMapping("/admin/login")
     public AuthResponse adminLogin(@Valid @RequestBody AdminLoginRequest request) {
         return authService.loginAdmin(request);

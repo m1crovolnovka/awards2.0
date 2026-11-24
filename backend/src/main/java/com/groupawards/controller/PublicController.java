@@ -2,6 +2,7 @@ package com.groupawards.controller;
 
 import com.groupawards.dto.NominationDtos.VotingStatus;
 import com.groupawards.service.SettingsService;
+import com.groupawards.service.TelegramOidcService;
 import com.groupawards.util.TelegramAuthValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,6 +20,7 @@ public class PublicController {
 
     private final SettingsService settingsService;
     private final TelegramAuthValidator telegramAuthValidator;
+    private final TelegramOidcService telegramOidcService;
 
     @Value("${app.telegram.bot-username}")
     private String botUsername;
@@ -31,15 +33,14 @@ public class PublicController {
     @GetMapping("/config")
     public Map<String, Object> config() {
         VotingStatus status = settingsService.status();
-        boolean widget = telegramAuthValidator.isBotConfigured()
-                && botUsername != null
-                && !botUsername.isBlank()
-                && !"REPLACE_ME".equals(botUsername);
+        long clientId = telegramOidcService.getEffectiveClientId();
+        boolean oidc = telegramOidcService.isConfigured();
 
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("telegramBotUsername", botUsername);
         map.put("telegramBotId", telegramAuthValidator.getBotId());
-        map.put("telegramAuthMode", widget ? "widget" : "lite");
+        map.put("telegramClientId", clientId);
+        map.put("telegramAuthMode", oidc ? "oidc" : "lite");
         map.put("liteAuthEnabled", telegramAuthValidator.isLiteAllowed());
         map.put("votingOpen", status.votingOpen());
         map.put("announcementAt", status.announcementAt() != null ? status.announcementAt().toString() : "");

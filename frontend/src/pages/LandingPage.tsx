@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import * as api from '../api/endpoints';
@@ -30,6 +30,22 @@ export function LandingPage() {
       });
   }, [online]);
 
+  const onOidcSuccess = useCallback(
+    async (idToken: string) => {
+      setLoading(true);
+      setError('');
+      try {
+        const res = await api.loginTelegramOidc(idToken);
+        loginWithToken(res);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Ошибка авторизации Telegram');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [loginWithToken],
+  );
+
   if (checking && online === null) {
     return (
       <div className="boot-screen">
@@ -46,9 +62,8 @@ export function LandingPage() {
   if (user?.role === 'ADMIN') return <Navigate to="/admin" replace />;
   if (user?.role === 'USER') return <Navigate to="/vote" replace />;
 
-  const bot = config?.telegramBotUsername?.replace(/^@/, '') || '';
-  const telegramReady =
-    config?.telegramAuthMode === 'widget' && !!bot && bot !== 'REPLACE_ME';
+  const clientId = config?.telegramClientId ?? 0;
+  const oidcReady = config?.telegramAuthMode === 'oidc' && clientId > 0;
 
   const onAltSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -104,19 +119,24 @@ export function LandingPage() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.35 }}
           >
-            Авторизация через Telegram на сайте. Выберите номинацию и проголосуйте.
+            Вход через Telegram Login — как на{' '}
+            <a href="https://core.telegram.org/bots/telegram-login" target="_blank" rel="noreferrer">
+              core.telegram.org
+            </a>
+            .
           </motion.p>
 
           {error && !altOpen && <div className="error-banner">{error}</div>}
-          {loading && <div className="success-banner">Авторизация…</div>}
+          {loading && <div className="success-banner">Авторизация через Telegram…</div>}
 
           <div className="telegram-slot">
-            {telegramReady ? (
+            {oidcReady ? (
               <div className="tg-widget-wrap">
-                <TelegramLoginWidget botUsername={bot} />
-                <p className="tg-steps" style={{ listStyle: 'none', paddingLeft: 0 }}>
-                  Нажмите кнопку Telegram выше — сайт получит ваш профиль после подтверждения входа.
-                </p>
+                <TelegramLoginWidget
+                  clientId={clientId}
+                  onSuccess={(token) => void onOidcSuccess(token)}
+                  onError={(msg) => setError(msg)}
+                />
                 <button
                   type="button"
                   className="btn btn-ghost"
@@ -125,38 +145,42 @@ export function LandingPage() {
                     setAltOpen(true);
                   }}
                 >
-                  Не открывается? Войти по @username
+                  Запасной вход по @username
                 </button>
               </div>
             ) : (
               <div className="tg-widget-wrap">
-                <button
-                  type="button"
-                  className="tg-login-btn"
-                  onClick={() => {
-                    setError('');
-                    setAltOpen(true);
-                  }}
-                >
-                  <TelegramIcon />
-                  Войти через Telegram
-                </button>
-                <div className="panel" style={{ maxWidth: 520, marginTop: '1rem' }}>
-                  <p style={{ marginTop: 0, color: 'var(--muted)' }}>
-                    Для официальной кнопки Telegram Login на Render задайте:
-                  </p>
-                  <ul style={{ color: 'var(--silver)', lineHeight: 1.6 }}>
+                <div className="panel" style={{ maxWidth: 560 }}>
+                  <h3 style={{ fontFamily: 'var(--font-display)', marginTop: 0 }}>
+                    Настройте Telegram Login (OIDC)
+                  </h3>
+                  <ol style={{ color: 'var(--silver)', lineHeight: 1.7, paddingLeft: '1.2rem' }}>
                     <li>
-                      <code>TELEGRAM_BOT_TOKEN</code>
+                      Откройте <strong>@BotFather</strong> → ваш бот → <strong>Login Widget</strong>
                     </li>
                     <li>
-                      <code>TELEGRAM_BOT_USERNAME</code> — без @
+                      Allowed URLs добавьте:{' '}
+                      <code>https://frontend-eight-eosin-65.vercel.app</code>
                     </li>
-                  </ul>
-                  <p style={{ color: 'var(--muted)', marginBottom: 0 }}>
-                    В @BotFather выполните <code>/setdomain</code> →{' '}
-                    <code>frontend-eight-eosin-65.vercel.app</code>, затем Redeploy бэкенда.
-                  </p>
+                    <li>
+                      Скопируйте <strong>Client ID</strong>
+                    </li>
+                    <li>
+                      На Render: <code>TELEGRAM_CLIENT_ID</code>=Client ID
+                    </li>
+                    <li>Redeploy бэкенда</li>
+                  </ol>
+                  <button
+                    type="button"
+                    className="tg-login-btn"
+                    onClick={() => {
+                      setError('');
+                      setAltOpen(true);
+                    }}
+                  >
+                    <TelegramIcon />
+                    Пока войти по @username
+                  </button>
                 </div>
               </div>
             )}
@@ -181,8 +205,8 @@ export function LandingPage() {
               onClick={(e) => e.stopPropagation()}
               onSubmit={(e) => void onAltSubmit(e)}
             >
-              <h2>Вход по Telegram username</h2>
-              <p>Запасной веб-вход, если официальный виджет недоступен.</p>
+              <h2>Вход по @username</h2>
+              <p>Временный веб-вход, пока не настроен Client ID.</p>
               {error && <div className="error-banner">{error}</div>}
               <div className="field">
                 <label>@username</label>
