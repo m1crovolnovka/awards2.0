@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { isSilentTelegramError } from '../utils/telegramErrors';
 
 declare global {
   interface Window {
@@ -28,10 +29,6 @@ export type TelegramOidcCallback = {
 /**
  * New Telegram Login library button.
  * https://core.telegram.org/bots/telegram-login
- *
- * Embeds:
- * <script src="https://oauth.telegram.org/js/telegram-login.js">
- * <button class="tg-auth-button">Sign In with Telegram</button>
  */
 export function TelegramLoginWidget({
   clientId,
@@ -43,24 +40,29 @@ export function TelegramLoginWidget({
   onError?: (message: string) => void;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const successRef = useRef(false);
 
   useEffect(() => {
     if (!clientId || !hostRef.current) return;
+    successRef.current = false;
 
     const handleAuth = (data: TelegramOidcCallback) => {
-      if (data?.error) {
-        onError?.(data.error);
-        return;
-      }
       if (data?.id_token) {
+        successRef.current = true;
         onSuccess(data.id_token);
         return;
       }
-      onError?.('Telegram не вернул id_token');
+      if (data?.error) {
+        // User closed popup after success, or cancelled — never show these
+        if (successRef.current || isSilentTelegramError(data.error)) {
+          return;
+        }
+        onError?.(data.error);
+        return;
+      }
     };
 
     window.onTelegramOidcAuth = handleAuth;
-
     hostRef.current.innerHTML = '';
 
     const script = document.createElement('script');
@@ -76,7 +78,6 @@ export function TelegramLoginWidget({
     button.className = 'tg-auth-button';
     button.textContent = 'Sign In with Telegram';
 
-    // Prefer JS API when available (more reliable than only data-onauth)
     script.onload = () => {
       try {
         window.Telegram?.Login?.init?.(
@@ -84,15 +85,15 @@ export function TelegramLoginWidget({
           handleAuth,
         );
       } catch {
-        /* widget still works via data-onauth */
+        /* data-onauth still works */
       }
     };
 
     hostRef.current.appendChild(script);
     hostRef.current.appendChild(button);
 
-    // Custom click: open popup via API if present
     const onClick = () => {
+      successRef.current = false;
       if (window.Telegram?.Login?.auth) {
         window.Telegram.Login.auth(
           { client_id: clientId, scope: ['profile', 'write'], lang: 'ru' },

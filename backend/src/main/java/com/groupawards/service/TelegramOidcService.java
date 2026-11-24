@@ -5,11 +5,20 @@ import com.groupawards.util.TelegramAuthValidator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtException;
+import org.springframework.security.oauth2.jwt.JwtIssuerValidator;
+import org.springframework.security.oauth2.jwt.JwtTimestampValidator;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.stereotype.Service;
+
+import java.time.Duration;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Validates id_token from the new Telegram Login library (OIDC).
@@ -32,7 +41,14 @@ public class TelegramOidcService {
     ) {
         this.clientId = clientId == null ? "" : clientId.trim();
         this.telegramAuthValidator = telegramAuthValidator;
-        this.jwtDecoder = NimbusJwtDecoder.withJwkSetUri(JWKS).build();
+
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(JWKS).build();
+        OAuth2TokenValidator<Jwt> validator = new DelegatingOAuth2TokenValidator<>(
+                new JwtTimestampValidator(Duration.ofMinutes(2)),
+                new JwtIssuerValidator(ISSUER)
+        );
+        decoder.setJwtValidator(validator);
+        this.jwtDecoder = decoder;
     }
 
     public boolean isConfigured() {
@@ -47,7 +63,6 @@ public class TelegramOidcService {
                 return 0L;
             }
         }
-        // Fallback: bot id from token (often equals Client ID)
         return telegramAuthValidator.getBotId();
     }
 
@@ -55,29 +70,30 @@ public class TelegramOidcService {
         if (idToken == null || idToken.isBlank()) {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Missing id_token");
         }
-        long expectedAud = getEffectiveClientId();
-        if (expectedAud <= 0) {
+
+        Set<Long> acceptedAudiences = new LinkedHashSet<>();
+        long configured = getEffectiveClientId();
+        if (configured > 0) {
+            acceptedAudiences.add(configured);
+        }
+        long botId = telegramAuthValidator.getBotId();
+        if (botId > 0) {
+            acceptedAudiences.add(botId);
+        }
+        if (acceptedAudiences.isEmpty()) {
             throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "TELEGRAM_CLIENT_ID is not configured");
         }
 
         try {
             Jwt jwt = jwtDecoder.decode(idToken);
-            String iss = jwt.getClaimAsString("iss");
-            if (iss == null || !(ISSUER.equals(iss) || (ISSUER + "/").equals(iss))) {
-                throw new ApiException(HttpStatus.UNAUTHORIZED, "Invalid token issuer");
-            }
 
-            Object aud = jwt.getAudience() != null && !jwt.getAudience().isEmpty()
-                    ? jwt.getAudience().getFirst()
-                    : jwt.getClaim("aud");
-            String audStr = aud == null ? "" : String.valueOf(aud);
-            if (!String.valueOf(expectedAud).equals(audStr)) {
+            if (!audienceMatches(jwt, acceptedAudiences)) {
+                log.warn("Telegram aud mismatch. tokenAud={}, accepted={}", jwt.getAudience(), acceptedAudiences);
                 throw new ApiException(HttpStatus.UNAUTHORIZED, "Invalid token audience");
             }
 
             Long telegramId = asLong(jwt.getClaim("id"));
             if (telegramId == null) {
-                // OIDC sub may be used in some tokens
                 telegramId = asLong(jwt.getClaim("sub"));
             }
             if (telegramId == null) {
@@ -89,8 +105,8 @@ public class TelegramOidcService {
             String name = jwt.getClaimAsString("name");
             String username = jwt.getClaimAsString("preferred_username");
             String picture = jwt.getClaimAsString("picture");
-
             String firstName = given != null ? given : (name != null ? name : username);
+
             return new VerifiedTelegramUser(telegramId, firstName, family, username, picture);
         } catch (ApiException e) {
             throw e;
@@ -98,6 +114,20 @@ public class TelegramOidcService {
             log.warn("Telegram id_token verification failed: {}", e.getMessage());
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Invalid Telegram id_token");
         }
+    }
+
+    private static boolean audienceMatches(Jwt jwt, Set<Long> accepted) {
+        List<String> audiences = jwt.getAudience();
+        if (audiences != null) {
+            for (String aud : audiences) {
+                Long value = asLong(aud);
+                if (value != null && accepted.contains(value)) {
+                    return true;
+                }
+            }
+        }
+        Long claimAud = asLong(jwt.getClaim("aud"));
+        return claimAud != null && accepted.contains(claimAud);
     }
 
     private static Long asLong(Object value) {
@@ -108,8 +138,16 @@ public class TelegramOidcService {
             return n.longValue();
         }
         try {
-            return Long.valueOf(String.valueOf(value));
-        } catch (NumberFormatException e) {
+            String s = String.valueOf(value).trim();
+            if (s.isEmpty()) {
+                return null;
+            }
+            // aud sometimes comes as JSON array string — take first number-like token
+            if (s.startsWith("[")) {
+                s = s.replaceAll("[^0-9]", " ").trim().split("\\s+")[0];
+            }
+            return Long.valueOf(s);
+        } catch (Exception e) {
             return null;
         }
     }

@@ -7,6 +7,7 @@ import { TelegramLoginWidget } from '../components/TelegramLoginWidget';
 import { useAuth } from '../hooks/AuthContext';
 import { useBackendStatus } from '../hooks/BackendStatus';
 import { OfflinePage } from './ErrorPages';
+import { toUserFriendlyAuthError } from '../utils/telegramErrors';
 import type { PublicConfig } from '../types';
 
 export function LandingPage() {
@@ -26,9 +27,15 @@ export function LandingPage() {
       .then(setConfig)
       .catch((e) => {
         if (e instanceof NetworkError) return;
-        setError(e instanceof Error ? e.message : 'Ошибка конфигурации');
+        const friendly = toUserFriendlyAuthError(e instanceof Error ? e.message : '');
+        if (friendly) setError(friendly);
       });
   }, [online]);
+
+  const showError = useCallback((raw: string) => {
+    const friendly = toUserFriendlyAuthError(raw);
+    setError(friendly || '');
+  }, []);
 
   const onOidcSuccess = useCallback(
     async (idToken: string) => {
@@ -38,19 +45,20 @@ export function LandingPage() {
         const res = await api.loginTelegramOidc(idToken);
         loginWithToken(res);
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Ошибка авторизации Telegram');
+        // Don't flash technical JWT errors — often a race after closing popup
+        showError(e instanceof Error ? e.message : '');
       } finally {
         setLoading(false);
       }
     },
-    [loginWithToken],
+    [loginWithToken, showError],
   );
 
   if (checking && online === null) {
     return (
       <div className="boot-screen">
         <div className="boot-spinner" />
-        <p>CONNECTING</p>
+        <p>LOADING</p>
       </div>
     );
   }
@@ -74,7 +82,7 @@ export function LandingPage() {
       loginWithToken(res);
       setAltOpen(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось войти');
+      showError(err instanceof Error ? err.message : 'Не удалось войти');
     } finally {
       setLoading(false);
     }
@@ -93,13 +101,13 @@ export function LandingPage() {
       </header>
 
       <section className="landing-hero">
-        <div className="swoosh" />
+        <div className="swoosh" aria-hidden />
         <div className="landing-content">
           <motion.p
+            className="landing-kicker"
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            style={{ letterSpacing: '0.35em', textTransform: 'uppercase', color: 'var(--silver)' }}
           >
             Lights out and away we go
           </motion.p>
@@ -119,15 +127,15 @@ export function LandingPage() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.35 }}
           >
-            Вход через Telegram Login — как на{' '}
-            <a href="https://core.telegram.org/bots/telegram-login" target="_blank" rel="noreferrer">
-              core.telegram.org
-            </a>
-            .
+            Войдите через Telegram и отдайте голос в номинациях.
           </motion.p>
 
           {error && !altOpen && <div className="error-banner">{error}</div>}
-          {loading && <div className="success-banner">Авторизация через Telegram…</div>}
+          {loading && !error && (
+            <div className="success-banner auth-progress" aria-live="polite">
+              Входим…
+            </div>
+          )}
 
           <div className="telegram-slot">
             {oidcReady ? (
@@ -135,53 +143,32 @@ export function LandingPage() {
                 <TelegramLoginWidget
                   clientId={clientId}
                   onSuccess={(token) => void onOidcSuccess(token)}
-                  onError={(msg) => setError(msg)}
+                  onError={showError}
                 />
                 <button
                   type="button"
-                  className="btn btn-ghost"
+                  className="btn btn-ghost tg-alt-btn"
                   onClick={() => {
                     setError('');
                     setAltOpen(true);
                   }}
                 >
-                  Запасной вход по @username
+                  Войти по @username
                 </button>
               </div>
             ) : (
               <div className="tg-widget-wrap">
-                <div className="panel" style={{ maxWidth: 560 }}>
-                  <h3 style={{ fontFamily: 'var(--font-display)', marginTop: 0 }}>
-                    Настройте Telegram Login (OIDC)
-                  </h3>
-                  <ol style={{ color: 'var(--silver)', lineHeight: 1.7, paddingLeft: '1.2rem' }}>
-                    <li>
-                      Откройте <strong>@BotFather</strong> → ваш бот → <strong>Login Widget</strong>
-                    </li>
-                    <li>
-                      Allowed URLs добавьте:{' '}
-                      <code>https://frontend-eight-eosin-65.vercel.app</code>
-                    </li>
-                    <li>
-                      Скопируйте <strong>Client ID</strong>
-                    </li>
-                    <li>
-                      На Render: <code>TELEGRAM_CLIENT_ID</code>=Client ID
-                    </li>
-                    <li>Redeploy бэкенда</li>
-                  </ol>
-                  <button
-                    type="button"
-                    className="tg-login-btn"
-                    onClick={() => {
-                      setError('');
-                      setAltOpen(true);
-                    }}
-                  >
-                    <TelegramIcon />
-                    Пока войти по @username
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  className="tg-login-btn"
+                  onClick={() => {
+                    setError('');
+                    setAltOpen(true);
+                  }}
+                >
+                  <TelegramIcon />
+                  Войти через Telegram
+                </button>
               </div>
             )}
           </div>
@@ -206,7 +193,7 @@ export function LandingPage() {
               onSubmit={(e) => void onAltSubmit(e)}
             >
               <h2>Вход по @username</h2>
-              <p>Временный веб-вход, пока не настроен Client ID.</p>
+              <p>Укажите Telegram username для входа на сайт.</p>
               {error && <div className="error-banner">{error}</div>}
               <div className="field">
                 <label>@username</label>

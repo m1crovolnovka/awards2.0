@@ -100,7 +100,8 @@ select {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 1.5rem;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
   border-bottom: 1px solid var(--line);
   backdrop-filter: blur(10px);
   background: rgba(7, 11, 20, 0.7);
@@ -112,9 +113,11 @@ select {
 .brand {
   display: flex;
   align-items: baseline;
-  gap: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
   font-family: var(--font-display);
   letter-spacing: 0.08em;
+  min-width: 0;
 }
 
 .brand-mark {
@@ -172,18 +175,19 @@ select {
 }
 
 .page {
-  width: min(1180px, calc(100% - 2rem));
+  width: min(1180px, calc(100% - 1.5rem));
   margin: 0 auto;
-  padding: 1.5rem 0 3rem;
+  padding: 1.25rem 0 2.5rem;
 }
 
 .hero-title {
   font-family: var(--font-display);
-  font-size: clamp(2.8rem, 8vw, 5.5rem);
+  font-size: clamp(2.4rem, 11vw, 5.5rem);
   line-height: 0.92;
   letter-spacing: 0.02em;
   text-transform: uppercase;
   margin: 0;
+  word-break: break-word;
 }
 
 .hero-title span {
@@ -266,10 +270,18 @@ select {
 .landing-hero {
   position: relative;
   overflow: hidden;
-  padding: 3rem 1.5rem 4rem;
+  padding: clamp(1.5rem, 4vw, 3rem) clamp(1rem, 3vw, 1.5rem) clamp(2rem, 5vw, 4rem);
   display: grid;
   align-content: center;
-  min-height: calc(100vh - 70px);
+  min-height: calc(100dvh - 64px);
+}
+
+.landing-kicker {
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--silver);
+  margin: 0;
+  font-size: clamp(0.7rem, 2.5vw, 0.95rem);
 }
 
 .swoosh {
@@ -280,6 +292,7 @@ select {
   clip-path: polygon(48% 0, 100% 0, 100% 100%, 28% 100%);
   opacity: 0.9;
   animation: swooshIn 1.1s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  pointer-events: none;
 }
 
 @keyframes swooshIn {
@@ -299,14 +312,22 @@ select {
   width: min(1100px, 100%);
   margin: 0 auto;
   display: grid;
-  gap: 1.5rem;
+  gap: clamp(0.9rem, 2.5vw, 1.5rem);
 }
 
 .telegram-slot {
-  display: inline-flex;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 1rem;
-  margin-top: 0.5rem;
+  gap: 0.85rem;
+  margin-top: 0.25rem;
+  width: 100%;
+  max-width: 420px;
+}
+
+.auth-progress {
+  width: fit-content;
+  max-width: 100%;
 }
 
 .admin-link {
@@ -678,12 +699,41 @@ select {
 
 .tg-widget-wrap {
   display: grid;
-  gap: 1rem;
-  justify-items: start;
+  gap: 0.85rem;
+  justify-items: stretch;
+  width: 100%;
+}
+
+.tg-official-widget {
+  width: 100%;
+}
+
+.tg-official-widget .tg-auth-button,
+button.tg-auth-button {
+  width: 100%;
+  max-width: 360px;
+  min-height: 48px;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  background: #2aabee;
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 0.85rem 1.25rem;
+  box-shadow: 0 10px 28px rgba(42, 171, 238, 0.35);
 }
 
 .tg-official-widget iframe {
   border: 0 !important;
+  max-width: 100%;
+}
+
+.tg-alt-btn {
+  width: 100%;
+  max-width: 360px;
+  justify-content: center;
 }
 
 .tg-steps {
@@ -881,22 +931,151 @@ select {
 }
 
 @media (max-width: 860px) {
+  .topbar {
+    padding: 0.75rem 0.9rem;
+  }
+
+  .brand-mark {
+    font-size: 1.05rem;
+  }
+
+  .brand-sub {
+    font-size: 0.72rem;
+  }
+
+  .btn {
+    padding: 0.65rem 0.95rem;
+    font-size: 0.85rem;
+  }
+
+  .lead {
+    font-size: 0.98rem;
+    max-width: 100%;
+  }
+
+  .landing-content {
+    max-width: 100%;
+  }
+
+  .swoosh {
+    clip-path: polygon(0 52%, 100% 28%, 100% 100%, 0 100%);
+    background: linear-gradient(180deg, transparent 10%, rgba(225, 6, 0, 0.55) 55%, rgba(255, 135, 0, 0.35));
+    opacity: 0.85;
+  }
+
+  .telegram-slot,
+  .tg-widget-wrap,
+  .tg-official-widget .tg-auth-button,
+  button.tg-auth-button,
+  .tg-login-btn,
+  .tg-alt-btn {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .tg-login-btn {
+    justify-content: center;
+    clip-path: none;
+    border-radius: 999px;
+  }
+
+  .error-banner,
+  .success-banner {
+    font-size: 0.92rem;
+    padding: 0.7rem 0.85rem;
+  }
+
   .nom-card {
     grid-template-columns: 1fr;
+    min-height: 0;
+  }
+
+  .nom-card-body {
+    padding: 1.1rem;
+  }
+
+  .nom-card-media img,
+  .nom-card-media .auth-image-fallback {
+    min-height: 180px;
+    max-height: 220px;
+  }
+
+  .nominees-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 0.75rem;
+  }
+
+  .category-stage {
+    min-height: auto;
+    margin-bottom: 1rem;
+  }
+
+  .category-big-title {
+    top: 8%;
+    font-size: clamp(2.4rem, 18vw, 4rem);
   }
 
   .admin-grid {
     grid-template-columns: 1fr;
+    gap: 0.85rem;
   }
 
   .admin-nav {
     position: static;
-    grid-auto-flow: column;
+    display: flex;
+    gap: 0.35rem;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.15rem;
   }
 
-  .swoosh {
-    clip-path: polygon(0 58%, 100% 35%, 100% 100%, 0 100%);
-    background: linear-gradient(180deg, transparent, rgba(225, 6, 0, 0.75));
+  .admin-nav button {
+    white-space: nowrap;
+    flex: 0 0 auto;
+  }
+
+  .stats-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .table-item {
+    grid-template-columns: 56px 1fr;
+    gap: 0.7rem;
+  }
+
+  .table-item .btn,
+  .table-item .actions {
+    grid-column: 1 / -1;
+  }
+
+  .modal-panel {
+    width: 100%;
+    max-height: min(90dvh, 640px);
+    overflow: auto;
+    padding: 1.15rem;
+  }
+
+  .soon-screen {
+    min-height: calc(100dvh - 64px);
+    padding: 1rem;
+  }
+
+  .countdown {
+    letter-spacing: 0.1em;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-title {
+    font-size: clamp(2.2rem, 14vw, 3rem);
+  }
+
+  .landing-kicker {
+    letter-spacing: 0.16em;
+  }
+
+  .topbar .actions {
+    gap: 0.35rem;
   }
 }
